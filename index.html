@@ -46,7 +46,6 @@
       const auth = getAuth(app);
       const provider = new GoogleAuthProvider();
 
-      // Global verfügbar machen für das restliche Script
       window.auth = auth;
       window.login = () => signInWithPopup(auth, provider).catch(err => alert("Fehler: " + err.message));
       window.logout = () => signOut(auth);
@@ -79,16 +78,22 @@
     </script>
 
     <style>
+        /* Fix für PWA-Ränder */
         html { background-color: #000000 !important; }
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        /* Event Farben */
         .event-1 { background-color: #bfdbfe; }
         .event-2 { background-color: #bbf7d0; }
         .event-3 { background-color: #fef08a; }
         .event-none { background-color: #f3f4f6; }
+        
         .holiday-text { color: #dc2626 !important; font-weight: bold; position: relative; z-index: 20; }
         .day.today { box-shadow: 0 0 0 2px #3b82f6; position: relative; z-index: 30; }
         .day span { color: #1f2937; }
+        
         .user-event-dot { width: 4px; height: 4px; background-color: #ef4444; border-radius: 50%; position: absolute; bottom: 4px; }
+        
         #event-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
     </style>
 </head>
@@ -250,18 +255,25 @@
         function openModal(dateKey) {
             if(!window.auth || !window.auth.currentUser) { alert("Bitte erst anmelden."); return; }
             selectedDateKey = dateKey;
-            document.getElementById('modal-date-title').textContent = `Termine am ${dateKey}`;
+            document.getElementById('modal-date-title').textContent = `Termine am ${dateKey.split('-').reverse().join('.')}`;
             renderModalEvents();
             document.getElementById('event-modal').style.display = 'flex';
         }
-        function closeModal() { document.getElementById('event-modal').style.display = 'none'; }
+
+        function closeModal() { 
+            document.getElementById('event-modal').style.display = 'none'; 
+            document.getElementById('event-text').value = "";
+            document.getElementById('event-time').value = "";
+        }
+
         function renderModalEvents() {
             const list = document.getElementById('existing-events-list');
             list.innerHTML = '';
             (userEvents[selectedDateKey] || []).forEach((ev, i) => {
-                list.innerHTML += `<div class="flex justify-between p-1 border-b text-sm"><span>${ev.time} ${ev.text}</span><button onclick="deleteEvent(${i})" class="text-red-500">X</button></div>`;
+                list.innerHTML += `<div class="flex justify-between p-2 bg-gray-50 border-b text-sm"><span><strong>${ev.time || '--:--'}</strong> ${ev.text}</span><button onclick="deleteEvent(${i})" class="text-red-500 font-bold ml-4">Löschen</button></div>`;
             });
         }
+
         async function addOrUpdateEvent() {
             const t = document.getElementById('event-time').value;
             const d = document.getElementById('event-text').value;
@@ -269,13 +281,16 @@
             if(!userEvents[selectedDateKey]) userEvents[selectedDateKey] = [];
             userEvents[selectedDateKey].push({time: t, text: d});
             await window.updateAllEventsFirebase(userEvents);
-            document.getElementById('event-text').value = "";
-            renderModalEvents(); renderCalendar();
+            closeModal(); // Fenster schließen
+            renderCalendar();
         }
+
         async function deleteEvent(i) {
             userEvents[selectedDateKey].splice(i, 1);
+            if(userEvents[selectedDateKey].length === 0) delete userEvents[selectedDateKey];
             await window.updateAllEventsFirebase(userEvents);
-            renderModalEvents(); renderCalendar();
+            renderModalEvents(); 
+            renderCalendar();
         }
 
         function renderCalendar() {
