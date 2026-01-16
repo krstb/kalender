@@ -56,7 +56,7 @@
           const userArea = document.getElementById('user-area');
           
           if (user) {
-              // Eingeloggt: Login ausblenden, User-Bereich mit Abmelden einblenden
+              // Eingeloggt: Login ausblenden, User-Bereich (Bild + Abmelden) einblenden
               loginBtn.classList.add('hidden');
               userArea.classList.remove('hidden');
               document.getElementById('user-img').src = user.photoURL || '';
