@@ -41,9 +41,15 @@
       };
 
       const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
-      const auth = getAuth(app);
-      const provider = new GoogleAuthProvider();
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  // EXPORT FÜR GLOBALEN ZUGRIFF
+  window.auth = auth; 
+  window.db = db;
+
+  window.login = () => signInWithPopup(auth, provider).catch(err => alert("Fehler: " + err.message));
 
       window.login = () => signInWithPopup(auth, provider).catch(err => alert("Fehler: " + err.message));
       window.logout = () => signOut(auth);
