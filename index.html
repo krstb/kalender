@@ -17,7 +17,8 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Fehler:', err));
+          navigator.serviceWorker.register('sw.js')
+            .catch(err => console.log('SW Fehler:', err));
         });
       }
     </script>
@@ -41,16 +42,12 @@
       };
 
       const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const auth = getAuth(app);
-  const provider = new GoogleAuthProvider();
+      const db = getFirestore(app);
+      const auth = getAuth(app);
+      const provider = new GoogleAuthProvider();
 
-  // EXPORT FÜR GLOBALEN ZUGRIFF
-  window.auth = auth; 
-  window.db = db;
-
-  window.login = () => signInWithPopup(auth, provider).catch(err => alert("Fehler: " + err.message));
-
+      // Global verfügbar machen für das restliche Script
+      window.auth = auth;
       window.login = () => signInWithPopup(auth, provider).catch(err => alert("Fehler: " + err.message));
       window.logout = () => signOut(auth);
 
@@ -82,17 +79,17 @@
     </script>
 
     <style>
-/* DEIN ORIGINAL CSS */
-    html {background-color: #000000 !important;}
-    body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-    .event-1 { background-color: #bfdbfe; }
-    .event-2 { background-color: #bbf7d0; }
-    .event-3 { background-color: #fef08a; }
-    .event-none { background-color: #f3f4f6; }
-    .holiday-text { color: #dc2626 !important; font-weight: bold; position: relative; z-index: 20; }
-    .day.today { box-shadow: 0 0 0 2px #3b82f6; position: relative; z-index: 30; }
-    .user-event-dot { width: 4px; height: 4px; background-color: #ef4444; border-radius: 50%; position: absolute; bottom: 4px; }
-    #event-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+        html { background-color: #000000 !important; }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .event-1 { background-color: #bfdbfe; }
+        .event-2 { background-color: #bbf7d0; }
+        .event-3 { background-color: #fef08a; }
+        .event-none { background-color: #f3f4f6; }
+        .holiday-text { color: #dc2626 !important; font-weight: bold; position: relative; z-index: 20; }
+        .day.today { box-shadow: 0 0 0 2px #3b82f6; position: relative; z-index: 30; }
+        .day span { color: #1f2937; }
+        .user-event-dot { width: 4px; height: 4px; background-color: #ef4444; border-radius: 50%; position: absolute; bottom: 4px; }
+        #event-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
     </style>
 </head>
 <body class="bg-[#98507F] text-white flex items-start justify-center min-h-screen w-full p-4 pt-4">
@@ -130,6 +127,18 @@
             <h2 class="text-base sm:text-lg font-semibold text-blue-800">Ereignis für die aktuelle Woche</h2>
             <p id="current-week-event" class="text-xl sm:text-2xl font-bold text-blue-900 mt-1"></p>
         </div>
+
+        <div class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-gray-700">
+             <div class="flex items-center"><span class="w-4 h-4 rounded-full event-1 mr-2"></span>Schlössle</div>
+             <div class="flex items-center"><span class="w-4 h-4 rounded-full event-2 mr-2"></span>Kursana</div>
+             <div class="flex items-center"><span class="w-4 h-4 rounded-full event-3 mr-2"></span>Keskin</div>
+             <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-gray-100 mr-2 border border-gray-400 flex items-center justify-center">
+                    <span class="text-xs font-bold holiday-text">F</span>
+                </span>
+                Feiertag (Rote Schrift)
+             </div>
+        </div>
     </div>
 
     <div id="event-modal">
@@ -146,7 +155,6 @@
     </div>
 
     <script>
-        // --- DEIN ORIGINAL JAVASCRIPT ---
         const monthYearEl = document.getElementById('month-year');
         const calendarGridWrapper = document.getElementById('calendar-grid-wrapper');
         const prevMonthBtn = document.getElementById('prev-month');
@@ -209,7 +217,7 @@
 
         function getHolidayName(date) {
             const year = date.getFullYear(), month = date.getMonth() + 1, day = date.getDate(), dateKey = getLocalDayKey(date);
-            const fixedHolidays = { '1-1': 'Neujahr', '1-6': 'Heilige Drei Könige', '5-1': 'Tag der Arbeit', '8-8': 'Friedensfest', '8-15': 'Mariä Himmelfahrt', '10-3': 'Tag der Einheit', '11-1': 'Allerheiligen', '12-25': 'Weihnachten', '12-26': 'Weihnachten' };
+            const fixedHolidays = { '1-1': 'Neujahr', '1-6': 'Heilige Drei Könige', '5-1': 'Tag der Arbeit', '8-8': 'Friedensfest (Augsburg)', '8-15': 'Mariä Himmelfahrt', '10-3': 'Tag der Deutschen Einheit', '11-1': 'Allerheiligen', '12-25': 'Erster Weihnachtstag', '12-26': 'Zweiter Weihnachtstag' };
             if (fixedHolidays[`${month}-${day}`]) return fixedHolidays[`${month}-${day}`];
             const easter = getEasterSunday(year);
             const movable = {};
@@ -239,9 +247,8 @@
             return result;
         }
 
-        // TERMIN MODAL FUNKTIONEN
         function openModal(dateKey) {
-            if(!auth.currentUser) { alert("Bitte erst anmelden."); return; }
+            if(!window.auth || !window.auth.currentUser) { alert("Bitte erst anmelden."); return; }
             selectedDateKey = dateKey;
             document.getElementById('modal-date-title').textContent = `Termine am ${dateKey}`;
             renderModalEvents();
@@ -271,7 +278,6 @@
             renderModalEvents(); renderCalendar();
         }
 
-        // DEINE ORIGINAL RENDER FUNKTION
         function renderCalendar() {
             calendarGridWrapper.innerHTML = '';
             const year = currentDate.getFullYear();
@@ -294,18 +300,16 @@
 
                 const event = getEventForDate(date);
                 const dayEl = document.createElement('div');
-                
-                // DEINE ORIGINAL KLASSEN + KLICK ERGÄNZUNG
                 dayEl.className = `day relative p-1 rounded-lg text-center aspect-square flex items-center justify-center cursor-pointer ${event.class} ${dateKey === getLocalDayKey(new Date()) ? 'today' : ''}`;
-                
-                // DAS HIER MACHT DEN TAG ANWÄHLBAR:
                 dayEl.onclick = () => openModal(dateKey);
 
                 const textClass = event.isHoliday ? 'holiday-text' : '';
                 dayEl.innerHTML = `<span class="text-gray-800 font-medium text-xs sm:text-base ${textClass}">${day}</span>`;
                 dayEl.title = event.name; 
 
-                if(userEvents[dateKey]) dayEl.innerHTML += `<div class="user-event-dot"></div>`;
+                if(userEvents[dateKey] && userEvents[dateKey].length > 0) {
+                    dayEl.innerHTML += `<div class="user-event-dot"></div>`;
+                }
                 calendarGridWrapper.appendChild(dayEl);
             }
             
