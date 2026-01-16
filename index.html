@@ -30,6 +30,7 @@
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
       import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
       const firebaseConfig = {
         apiKey: "AIzaSyBzkIboYMzW6ZoO3gfcyPiYFLT_-XQWFDc",
@@ -43,22 +44,46 @@
 
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
+      const auth = getAuth(app);
+      const provider = new GoogleAuthProvider();
       const eventsDocRef = doc(db, "data", "calendarEvents");
 
+      // Login/Logout Funktionen für die Buttons
+      window.login = () => signInWithPopup(auth, provider).catch(console.error);
+      window.logout = () => signOut(auth).catch(console.error);
+
+      // Überwachung des Login-Status
+      onAuthStateChanged(auth, (user) => {
+          const loginBtn = document.getElementById('login-btn');
+          const userArea = document.getElementById('user-area');
+          
+          if (user) {
+              loginBtn.classList.add('hidden');
+              userArea.classList.remove('hidden');
+              document.getElementById('user-img').src = user.photoURL || '';
+              
+              // Erst wenn eingeloggt, Termine laden
+              onSnapshot(eventsDocRef, (doc) => {
+                  userEvents = doc.exists() ? doc.data() : {};
+                  if (typeof renderCalendar === "function") renderCalendar();
+              });
+          } else {
+              loginBtn.classList.remove('hidden');
+              userArea.classList.add('hidden');
+              userEvents = {};
+              if (typeof renderCalendar === "function") renderCalendar();
+          }
+      });
+
       window.updateAllEventsFirebase = async (allEvents) => {
+          if (!auth.currentUser) return;
           try { await setDoc(eventsDocRef, allEvents); } 
           catch (error) { console.error("Fehler beim Speichern:", error); }
       };
-
-      onSnapshot(eventsDocRef, (doc) => {
-          userEvents = doc.exists() ? doc.data() : {};
-          if (typeof renderCalendar === "function") renderCalendar();
-      });
     </script>
 
     <style>
-
-/* Fix für PWA-Ränder */
+    /* Fix für PWA-Ränder */
     html {background-color: #000000 !important;}
         
         body {
@@ -70,84 +95,60 @@
         .event-3 { background-color: #fef08a; } /* Yellow-200 / Keskin */
         .event-none { background-color: #f3f4f6; } /* Grau / Pause & Wochenende */
         
-        /* ROTE SCHRIFT für Feiertage */
         .holiday-text {
-            color: #dc2626 !important; /* Wichtig: Überschreibt die Standard-Textfarbe */
+            color: #dc2626 !important;
             font-weight: bold;
             position: relative;
             z-index: 20; 
         }
         
-        /* Hervorhebung des heutigen Tages */
         .day.today {
-            box-shadow: 0 0 0 2px #3b82f6; /* Blue-500 */
+            box-shadow: 0 0 0 2px #3b82f6;
             position: relative;
             z-index: 30; 
         }
         
-        /* Standard-Textfarbe für Tagesnummern */
-        .day span {
-            color: #1f2937; /* Graublau-900 */
-        }
-        
-        .week-number {
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: #4b5563; /* Gray-600 */
-            position: absolute;
-            top: 2px;
-            left: 3px;
-        }
+        .day span { color: #1f2937; }
 
-        /* Ergänzung für Terminpunkte */
         .user-event-dot {
-            width: 4px;
-            height: 4px;
+            width: 4px; height: 4px;
             background-color: #ef4444;
             border-radius: 50%;
-            position: absolute;
-            bottom: 4px;
+            position: absolute; bottom: 4px;
         }
 
         #event-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 100;
-            align-items: center;
-            justify-content: center;
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 100;
+            align-items: center; justify-content: center;
         }
     </style>
 </head>
 <body class="bg-[#98507F] text-white flex items-start justify-center min-h-screen w-full p-4 pt-4">
 
     <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-2 sm:p-4 md:p-6 text-gray-800">
+        
+        <div class="flex justify-end mb-4">
+            <button id="login-btn" onclick="login()" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-full shadow-sm">Google Login</button>
+            <div id="user-area" class="hidden flex items-center gap-2">
+                <img id="user-img" src="" class="w-6 h-6 rounded-full border border-gray-200">
+                <button onclick="logout()" class="text-[10px] text-gray-400 underline">Abmelden</button>
+            </div>
+        </div>
+
         <div class="header flex justify-between items-center mb-6">
-            <button id="prev-month" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
+            <button id="prev-month" class="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
             </button>
             <h1 id="month-year" class="text-xl sm:text-2xl font-bold text-gray-800 text-center"></h1>
-            <button id="next-month" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
+            <button id="next-month" class="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
             </button>
         </div>
 
         <div class="grid grid-cols-8 gap-1 text-center font-semibold text-gray-500 mb-2 text-xs sm:text-base">
-            <div>KW</div>
-            <div>Mo</div>
-            <div>Di</div>
-            <div>Mi</div>
-            <div>Do</div>
-            <div>Fr</div>
-            <div>Sa</div>
-            <div>So</div>
+            <div>KW</div><div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div>
         </div>
-
         <div id="calendar-grid-wrapper" class="grid grid-cols-8 gap-1"></div>
 
         <div class="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200 text-center">
@@ -163,7 +164,7 @@
                 <span class="w-4 h-4 rounded-full bg-gray-100 mr-2 border border-gray-400 flex items-center justify-center">
                     <span class="text-xs font-bold holiday-text">F</span>
                 </span>
-                Feiertag (Rote Schrift)
+                Feiertag
              </div>
         </div>
     </div>
@@ -173,12 +174,12 @@
             <h3 id="modal-date-title" class="font-bold mb-4 text-lg">Termine</h3>
             <div id="existing-events-list" class="mb-4 space-y-2"></div>
             <div class="border-t pt-4">
-                <p class="text-xs font-bold text-gray-500 mb-2 uppercase">Neuer Termin</p>
+                <p id="input-label" class="text-xs font-bold text-gray-500 mb-2 uppercase">Neuer Termin</p>
                 <input type="time" id="event-time" class="w-full border rounded p-2 mb-2">
                 <input type="text" id="event-text" placeholder="Beschreibung" class="w-full border rounded p-2 mb-4">
                 <div class="flex justify-between">
                     <button onclick="closeModal()" class="text-gray-500">Schließen</button>
-                    <button onclick="addSingleEvent()" class="bg-blue-600 text-white px-4 py-2 rounded">Hinzufügen</button>
+                    <button id="add-save-btn" onclick="addOrUpdateEvent()" class="bg-blue-600 text-white px-4 py-2 rounded">Hinzufügen</button>
                 </div>
             </div>
         </div>
@@ -194,23 +195,19 @@
         const eventTimeInput = document.getElementById('event-time');
         const eventTextInput = document.getElementById('event-text');
         const existingEventsList = document.getElementById('existing-events-list');
+        const addSaveBtn = document.getElementById('add-save-btn');
+        const inputLabel = document.getElementById('input-label');
 
         let userEvents = {}; 
         let currentDate = new Date();
         let selectedDateKey = null;
+        let editingIndex = null;
 
-        const events = [
-            { name: 'Schlössle', class: 'event-1' },
-            { name: 'Kursana', class: 'event-2' },
-            { name: 'Keskin', class: 'event-3' }
-        ];
-
-        // NEUE ZYKLUS-LOGIK BASIEREND AUF TAGEN (AUS ORIGINAL)
+        const events = [{ name: 'Schlössle', class: 'event-1' }, { name: 'Kursana', class: 'event-2' }, { name: 'Keskin', class: 'event-3' }];
         const REFERENCE_MONDAY = new Date(2025, 0, 13); 
         const MS_PER_DAY = 1000 * 60 * 60 * 24;
         const CYCLE_DAYS = 42; 
 
-        // --- HILFSFUNKTIONEN FÜR ZEITBERECHNUNG (EXAKT AUS ORIGINAL) ---
         function daysSinceUTC(startDate, endDate) {
             const start_utc = Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
             const end_utc = Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
@@ -231,17 +228,11 @@
         }
 
         function getLocalDayKey(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         }
 
         function getUTCDayKey(date) {
-            const year = date.getUTCFullYear();
-            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(date.getUTCDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
+            return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
         }
 
         function getEasterSunday(year) {
@@ -262,53 +253,53 @@
                 '10-3': 'Tag der Deutschen Einheit', '11-1': 'Allerheiligen',
                 '12-25': 'Erster Weihnachtstag', '12-26': 'Zweiter Weihnachtstag'
             };
-            const fixedKey = `${month}-${day}`;
-            if (fixedHolidays[fixedKey]) return fixedHolidays[fixedKey];
+            if (fixedHolidays[`${month}-${day}`]) return fixedHolidays[`${month}-${day}`];
             const easter = getEasterSunday(year); 
-            const movableHolidays = {};
-            movableHolidays[getUTCDayKey(addDays(easter, -2))] = 'Karfreitag';
-            movableHolidays[getUTCDayKey(easter)] = 'Ostersonntag';
-            movableHolidays[getUTCDayKey(addDays(easter, 1))] = 'Ostermontag';
-            movableHolidays[getUTCDayKey(addDays(easter, 39))] = 'Christi Himmelfahrt';
-            movableHolidays[getUTCDayKey(addDays(easter, 49))] = 'Pfingstsonntag';
-            movableHolidays[getUTCDayKey(addDays(easter, 50))] = 'Pfingstmontag';
-            movableHolidays[getUTCDayKey(addDays(easter, 60))] = 'Fronleichnam';
-            return movableHolidays[dateKey] || null;
+            const mov = {};
+            mov[getUTCDayKey(addDays(easter, -2))] = 'Karfreitag';
+            mov[getUTCDayKey(easter)] = 'Ostersonntag';
+            mov[getUTCDayKey(addDays(easter, 1))] = 'Ostermontag';
+            mov[getUTCDayKey(addDays(easter, 39))] = 'Christi Himmelfahrt';
+            mov[getUTCDayKey(addDays(easter, 49))] = 'Pfingstsonntag';
+            mov[getUTCDayKey(addDays(easter, 50))] = 'Pfingstmontag';
+            mov[getUTCDayKey(addDays(easter, 60))] = 'Fronleichnam';
+            return mov[dateKey] || null;
         }
 
         function getEventForDate(date) {
             let result = {};
             const dayOfWeek = date.getDay(); 
             if (dayOfWeek === 0 || dayOfWeek === 6) {
-                result = { name: 'Kein Ereignis (Wochenende)', class: 'event-none' };
+                result = { name: 'Wochenende', class: 'event-none' };
             } else {
                 const daysSinceRef = daysSinceUTC(REFERENCE_MONDAY, date);
                 let cycleDayIndex = ((daysSinceRef % CYCLE_DAYS) + CYCLE_DAYS) % CYCLE_DAYS; 
                 if (cycleDayIndex >= 0 && cycleDayIndex < 7) result = Object.assign({}, events[0]);
                 else if (cycleDayIndex >= 7 && cycleDayIndex < 14) result = Object.assign({}, events[1]);
                 else if (cycleDayIndex >= 14 && cycleDayIndex <= 20) result = Object.assign({}, events[2]);
-                else result = { name: 'Kein Ereignis (Pause)', class: 'event-none' };
+                else result = { name: 'Pause', class: 'event-none' };
             }
             const holidayName = getHolidayName(date); 
             if (holidayName) {
-                result.isHoliday = true; 
-                result.holidayName = holidayName;
-                result.name = `Feiertag (${holidayName}) / ${result.name.split(' (')[0]}`; 
-            } else {
-                result.isHoliday = false;
+                result.isHoliday = true; result.holidayName = holidayName;
             }
             return result;
         }
 
-        // --- FIREBASE / MODAL LOGIK ---
         function openModal(dateKey) {
             selectedDateKey = dateKey;
+            editingIndex = null;
+            resetInputs();
             document.getElementById('modal-date-title').textContent = `Termine am ${dateKey.split('-').reverse().join('.')}`;
             renderModalEvents();
             eventModal.style.display = 'flex';
         }
 
         function closeModal() { eventModal.style.display = 'none'; }
+        function resetInputs() {
+            eventTextInput.value = ""; eventTimeInput.value = "";
+            addSaveBtn.textContent = "Hinzufügen"; editingIndex = null;
+        }
 
         function renderModalEvents() {
             existingEventsList.innerHTML = '';
@@ -316,21 +307,31 @@
             if (Array.isArray(dayEvents)) {
                 dayEvents.forEach((ev, index) => {
                     const div = document.createElement('div');
-                    div.className = 'flex justify-between items-center bg-gray-50 p-2 rounded border';
+                    div.className = 'flex justify-between items-center bg-gray-50 p-2 rounded border hover:bg-gray-100 cursor-pointer';
+                    div.onclick = () => startEditEvent(index);
                     div.innerHTML = `<div class="text-sm"><strong>${ev.time || '--:--'}</strong> ${ev.text}</div>
-                                     <button onclick="deleteSingleEvent(${index})" class="text-red-500 text-xs font-bold ml-2">Löschen</button>`;
+                                     <button onclick="event.stopPropagation(); deleteSingleEvent(${index})" class="text-red-500 text-xs font-bold ml-2 p-1">Löschen</button>`;
                     existingEventsList.appendChild(div);
                 });
             }
         }
 
-        async function addSingleEvent() {
+        function startEditEvent(index) {
+            const ev = userEvents[selectedDateKey][index];
+            eventTimeInput.value = ev.time;
+            eventTextInput.value = ev.text;
+            editingIndex = index;
+            addSaveBtn.textContent = "Speichern";
+        }
+
+        async function addOrUpdateEvent() {
             if (eventTextInput.value.trim() !== "") {
                 if (!Array.isArray(userEvents[selectedDateKey])) userEvents[selectedDateKey] = [];
-                userEvents[selectedDateKey].push({ time: eventTimeInput.value, text: eventTextInput.value });
+                const newData = { time: eventTimeInput.value, text: eventTextInput.value };
+                if (editingIndex !== null) userEvents[selectedDateKey][editingIndex] = newData;
+                else userEvents[selectedDateKey].push(newData);
                 await window.updateAllEventsFirebase(userEvents);
-                eventTextInput.value = ""; eventTimeInput.value = "";
-                renderModalEvents();
+                resetInputs(); renderModalEvents();
             }
         }
 
@@ -338,7 +339,7 @@
             userEvents[selectedDateKey].splice(index, 1);
             if (userEvents[selectedDateKey].length === 0) delete userEvents[selectedDateKey];
             await window.updateAllEventsFirebase(userEvents);
-            renderModalEvents();
+            resetInputs(); renderModalEvents();
         }
 
         function renderCalendar() {
@@ -352,19 +353,14 @@
             let startOffset = (firstDay.getDay() || 7) - 1;
             const todayKey = getLocalDayKey(new Date());
 
-            const firstWeekNumber = getWeekNumber(firstDay);
-            calendarGridWrapper.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-center font-bold text-gray-700 aspect-square text-xs sm:text-base">${firstWeekNumber}</div>`);
+            calendarGridWrapper.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-center font-bold text-gray-700 aspect-square text-xs sm:text-base">${getWeekNumber(firstDay)}</div>`);
             for (let i = 0; i < startOffset; i++) calendarGridWrapper.insertAdjacentHTML('beforeend', '<div class="aspect-square"></div>');
-
-            let weekNumbersDisplayed = { [firstWeekNumber]: true };
 
             for (let day = 1; day <= daysInMonth; day++) {
                 const date = new Date(year, month, day);
                 const dateKey = getLocalDayKey(date);
-                const weekNumber = getWeekNumber(date);
-                if (!weekNumbersDisplayed[weekNumber] && date.getDay() === 1) {
-                    calendarGridWrapper.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-center font-bold text-gray-700 aspect-square text-xs sm:text-base">${weekNumber}</div>`);
-                    weekNumbersDisplayed[weekNumber] = true;
+                if (date.getDay() === 1 && day !== 1) {
+                    calendarGridWrapper.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-center font-bold text-gray-700 aspect-square text-xs sm:text-base">${getWeekNumber(date)}</div>`);
                 }
                 
                 let event = getEventForDate(date);
@@ -383,7 +379,7 @@
             }
             
             const currentEvent = getEventForDate(new Date());
-            currentWeekEventEl.textContent = currentEvent.isHoliday ? currentEvent.holidayName : currentEvent.name.replace(' (Pause)', '').replace(' (Wochenende)', '');
+            currentWeekEventEl.textContent = currentEvent.isHoliday ? currentEvent.holidayName : currentEvent.name;
         }
 
         prevMonthBtn.onclick = () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); };
