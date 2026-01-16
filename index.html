@@ -82,7 +82,6 @@
         html { background-color: #000000 !important; }
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* Event Farben */
         .event-1 { background-color: #bfdbfe; }
         .event-2 { background-color: #bbf7d0; }
         .event-3 { background-color: #fef08a; }
@@ -153,8 +152,8 @@
             <input type="time" id="event-time" class="w-full border rounded p-2 mb-2">
             <input type="text" id="event-text" placeholder="Beschreibung" class="w-full border rounded p-2 mb-4">
             <div class="flex justify-between">
-                <button onclick="closeModal()" class="text-gray-500">Abbrechen</button>
-                <button onclick="addOrUpdateEvent()" class="bg-blue-600 text-white px-4 py-2 rounded">Speichern</button>
+                <button onclick="closeModal()" class="text-gray-500 text-sm">Abbrechen</button>
+                <button id="save-btn" onclick="addOrUpdateEvent()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm">Speichern</button>
             </div>
         </div>
     </div>
@@ -169,6 +168,7 @@
         let userEvents = {}; 
         let currentDate = new Date();
         let selectedDateKey = null;
+        let editIndex = null; // Speichert, welcher Termin gerade bearbeitet wird
 
         const events = [
             { name: 'Schlössle', class: 'event-1' },
@@ -255,6 +255,7 @@
         function openModal(dateKey) {
             if(!window.auth || !window.auth.currentUser) { alert("Bitte erst anmelden."); return; }
             selectedDateKey = dateKey;
+            editIndex = null; 
             document.getElementById('modal-date-title').textContent = `Termine am ${dateKey.split('-').reverse().join('.')}`;
             renderModalEvents();
             document.getElementById('event-modal').style.display = 'flex';
@@ -264,24 +265,52 @@
             document.getElementById('event-modal').style.display = 'none'; 
             document.getElementById('event-text').value = "";
             document.getElementById('event-time').value = "";
+            editIndex = null;
         }
 
         function renderModalEvents() {
             const list = document.getElementById('existing-events-list');
             list.innerHTML = '';
             (userEvents[selectedDateKey] || []).forEach((ev, i) => {
-                list.innerHTML += `<div class="flex justify-between p-2 bg-gray-50 border-b text-sm"><span><strong>${ev.time || '--:--'}</strong> ${ev.text}</span><button onclick="deleteEvent(${i})" class="text-red-500 font-bold ml-4">Löschen</button></div>`;
+                const item = document.createElement('div');
+                item.className = "flex justify-between items-center p-2 bg-gray-50 border-b text-sm";
+                item.innerHTML = `
+                    <div class="cursor-pointer flex-grow" onclick="editEvent(${i})">
+                        <strong>${ev.time || '--:--'}</strong> ${ev.text}
+                        <div class="text-[10px] text-blue-500">Zum Bearbeiten antippen</div>
+                    </div>
+                    <button onclick="deleteEvent(${i})" class="text-red-500 font-bold ml-4 p-1">Löschen</button>
+                `;
+                list.appendChild(item);
             });
         }
+
+        // BEARBEITEN FUNKTION
+        window.editEvent = (i) => {
+            const ev = userEvents[selectedDateKey][i];
+            document.getElementById('event-time').value = ev.time;
+            document.getElementById('event-text').value = ev.text;
+            editIndex = i;
+            document.getElementById('event-text').focus();
+        };
 
         async function addOrUpdateEvent() {
             const t = document.getElementById('event-time').value;
             const d = document.getElementById('event-text').value;
             if(!d) return;
+
             if(!userEvents[selectedDateKey]) userEvents[selectedDateKey] = [];
-            userEvents[selectedDateKey].push({time: t, text: d});
+
+            if(editIndex !== null) {
+                // Bestehenden Eintrag überschreiben
+                userEvents[selectedDateKey][editIndex] = {time: t, text: d};
+            } else {
+                // Neuen Eintrag hinzufügen
+                userEvents[selectedDateKey].push({time: t, text: d});
+            }
+
             await window.updateAllEventsFirebase(userEvents);
-            closeModal(); // Fenster schließen
+            closeModal();
             renderCalendar();
         }
 
@@ -320,8 +349,7 @@
 
                 const textClass = event.isHoliday ? 'holiday-text' : '';
                 dayEl.innerHTML = `<span class="text-gray-800 font-medium text-xs sm:text-base ${textClass}">${day}</span>`;
-                dayEl.title = event.name; 
-
+                
                 if(userEvents[dateKey] && userEvents[dateKey].length > 0) {
                     dayEl.innerHTML += `<div class="user-event-dot"></div>`;
                 }
