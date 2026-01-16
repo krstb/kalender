@@ -28,45 +28,48 @@
     
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-      import { getFirestore, doc, setDoc, onSnapshot, deleteField, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import { getFirestore, doc, setDoc, getDoc, onSnapshot, deleteField, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+      // DEINE FIREBASE KONFIGURATION HIER EINFÜGEN
       const firebaseConfig = {
-        apiKey: "AIzaSyBzkIboYMzW6ZoO3gfcyPiYFLT_-XQWFDc",
-        authDomain: "kalender-91d50.firebaseapp.com",
-        projectId: "kalender-91d50",
-        storageBucket: "kalender-91d50.firebasestorage.app",
-        messagingSenderId: "291518358460",
-        appId: "1:291518358460:web:7c7fc6fa15e692ffe9c1b9",
-        measurementId: "G-CFV1LSRZCZ"
+        apiKey: "DEIN_API_KEY",
+        authDomain: "DEIN_PROJEKT.firebaseapp.com",
+        projectId: "DEIN_PROJEKT",
+        storageBucket: "DEIN_PROJEKT.appspot.com",
+        messagingSenderId: "DEINE_ID",
+        appId: "DEINE_APP_ID"
       };
 
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const eventsDocRef = doc(db, "data", "calendarEvents");
 
-      // Funktionen für die UI bereitstellen
+      // Globale Funktionen für das UI zugänglich machen
       window.saveUserEventFirebase = async (dateKey, data) => {
-          try {
-              await updateDoc(eventsDocRef, { [dateKey]: data });
-          } catch (error) {
+          await updateDoc(eventsDocRef, {
+              [dateKey]: data
+          }).catch(async (error) => {
+              // Falls das Dokument noch nicht existiert
               if (error.code === 'not-found') {
                   await setDoc(eventsDocRef, { [dateKey]: data });
               }
-          }
+          });
       };
 
       window.deleteUserEventFirebase = async (dateKey) => {
-          await updateDoc(eventsDocRef, { [dateKey]: deleteField() });
+          await updateDoc(eventsDocRef, {
+              [dateKey]: deleteField()
+          });
       };
 
-      // Echtzeit-Überwachung der Datenbank
+      // Echtzeit-Update Listener
       onSnapshot(eventsDocRef, (doc) => {
           if (doc.exists()) {
               userEvents = doc.data();
           } else {
               userEvents = {};
           }
-          if (typeof renderCalendar === "function") renderCalendar();
+          renderCalendar();
       });
     </script>
 
@@ -102,6 +105,7 @@
             left: 3px;
         }
 
+        /* Neu: Termin-Punkt */
         .user-event-dot {
             width: 4px;
             height: 4px;
@@ -111,6 +115,7 @@
             bottom: 4px;
         }
 
+        /* Neu: Modal Styling */
         #event-modal {
             display: none;
             position: fixed;
@@ -190,11 +195,13 @@
         const nextMonthBtn = document.getElementById('next-month');
         const currentWeekEventEl = document.getElementById('current-week-event');
         
+        // Neu: Termin-Variablen
         const eventModal = document.getElementById('event-modal');
         const eventTimeInput = document.getElementById('event-time');
         const eventTextInput = document.getElementById('event-text');
         const deleteBtn = document.getElementById('delete-event-btn');
         let selectedDateKey = null;
+        // Initial leer, wird von Firebase befüllt
         let userEvents = {}; 
 
         let currentDate = new Date();
@@ -324,9 +331,13 @@
             eventModal.style.display = 'none';
         }
 
+        // Geändert auf Firebase-Speicherung
         async function saveUserEvent() {
             if (eventTextInput.value.trim() !== "") {
-                const data = { time: eventTimeInput.value, text: eventTextInput.value };
+                const data = {
+                    time: eventTimeInput.value,
+                    text: eventTextInput.value
+                };
                 if (window.saveUserEventFirebase) {
                     await window.saveUserEventFirebase(selectedDateKey, data);
                 }
@@ -334,6 +345,7 @@
             closeModal();
         }
 
+        // Geändert auf Firebase-Löschung
         async function deleteUserEvent() {
             if (window.deleteUserEventFirebase) {
                 await window.deleteUserEventFirebase(selectedDateKey);
