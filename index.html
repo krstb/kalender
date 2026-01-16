@@ -147,7 +147,7 @@
 
     <div id="event-modal">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-80 text-gray-800">
-            <h3 id="modal-date-title" class="font-bold mb-4">Termine</h3>
+            <h3 id="modal-date-title" class="font-bold mb-4 text-center">Termine</h3>
             <div id="existing-events-list" class="mb-4 space-y-2 max-h-40 overflow-y-auto"></div>
             <input type="time" id="event-time" class="w-full border rounded p-2 mb-2">
             <input type="text" id="event-text" placeholder="Beschreibung" class="w-full border rounded p-2 mb-4">
@@ -168,7 +168,7 @@
         let userEvents = {}; 
         let currentDate = new Date();
         let selectedDateKey = null;
-        let editIndex = null; // Speichert, welcher Termin gerade bearbeitet wird
+        let editIndex = null; 
 
         const events = [
             { name: 'Schlössle', class: 'event-1' },
@@ -256,7 +256,7 @@
             if(!window.auth || !window.auth.currentUser) { alert("Bitte erst anmelden."); return; }
             selectedDateKey = dateKey;
             editIndex = null; 
-            document.getElementById('modal-date-title').textContent = `Termine am ${dateKey.split('-').reverse().join('.')}`;
+            document.getElementById('modal-date-title').textContent = `${dateKey.split('-').reverse().join('.')}`;
             renderModalEvents();
             document.getElementById('event-modal').style.display = 'flex';
         }
@@ -275,17 +275,18 @@
                 const item = document.createElement('div');
                 item.className = "flex justify-between items-center p-2 bg-gray-50 border-b text-sm";
                 item.innerHTML = `
-                    <div class="cursor-pointer flex-grow" onclick="editEvent(${i})">
+                    <div class="flex-grow">
                         <strong>${ev.time || '--:--'}</strong> ${ev.text}
-                        <div class="text-[10px] text-blue-500">Zum Bearbeiten antippen</div>
                     </div>
-                    <button onclick="deleteEvent(${i})" class="text-red-500 font-bold ml-4 p-1">Löschen</button>
+                    <div class="flex gap-3">
+                        <button onclick="editEvent(${i})" class="text-blue-500 font-medium">Bearbeiten</button>
+                        <button onclick="deleteEvent(${i})" class="text-red-500 font-medium">Löschen</button>
+                    </div>
                 `;
                 list.appendChild(item);
             });
         }
 
-        // BEARBEITEN FUNKTION
         window.editEvent = (i) => {
             const ev = userEvents[selectedDateKey][i];
             document.getElementById('event-time').value = ev.time;
@@ -302,10 +303,8 @@
             if(!userEvents[selectedDateKey]) userEvents[selectedDateKey] = [];
 
             if(editIndex !== null) {
-                // Bestehenden Eintrag überschreiben
                 userEvents[selectedDateKey][editIndex] = {time: t, text: d};
             } else {
-                // Neuen Eintrag hinzufügen
                 userEvents[selectedDateKey].push({time: t, text: d});
             }
 
