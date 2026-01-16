@@ -135,7 +135,7 @@
                 <input type="time" id="event-time" class="w-full border rounded p-2 mb-2">
                 <input type="text" id="event-text" placeholder="Beschreibung" class="w-full border rounded p-2 mb-4">
                 <div class="flex justify-between">
-                    <button onclick="closeModal()" class="text-gray-500">Abbrechen</button>
+                    <button onclick="closeModal()" class="text-gray-500">Schließen</button>
                     <button onclick="addOrUpdateEvent()" class="bg-blue-600 text-white px-4 py-2 rounded">Speichern</button>
                 </div>
             </div>
@@ -143,6 +143,7 @@
     </div>
 
     <script>
+        // --- DEIN ORIGINAL JAVASCRIPT ---
         const monthYearEl = document.getElementById('month-year');
         const calendarGridWrapper = document.getElementById('calendar-grid-wrapper');
         const prevMonthBtn = document.getElementById('prev-month');
@@ -185,6 +186,7 @@
             return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
         }
 
+        // Deine Osterformel (Gauß)
         function getEasterSunday(year) {
             const Y = year, a = Y % 19, b = Math.floor(Y / 100), c = Y % 100,
                   d = Math.floor(b / 4), e = b % 4, g = Math.floor((8 * b + 13) / 25),
@@ -227,7 +229,7 @@
             return result;
         }
 
-        // MODAL FUNKTIONEN
+        // NEUE MODAL FUNKTIONEN
         function openModal(dateKey) {
             if (!auth.currentUser) { alert("Bitte erst anmelden."); return; }
             selectedDateKey = dateKey;
@@ -242,8 +244,8 @@
             list.innerHTML = '';
             (userEvents[selectedDateKey] || []).forEach((ev, i) => {
                 list.innerHTML += `<div class="flex justify-between p-2 bg-gray-50 border rounded text-sm mb-1">
-                    <span><strong>${ev.time}</strong> ${ev.text}</span>
-                    <button onclick="deleteEvent(${i})" class="text-red-500 font-bold">X</button>
+                    <span><strong>${ev.time || '--:--'}</strong> ${ev.text}</span>
+                    <button onclick="deleteEvent(${i})" class="text-red-500 font-bold">Löschen</button>
                 </div>`;
             });
         }
@@ -283,7 +285,7 @@
                 const dayEl = document.createElement('div');
                 dayEl.className = `day relative p-1 rounded-lg text-center aspect-square flex items-center justify-center cursor-pointer ${ev.class} ${dateKey === getLocalDayKey(new Date()) ? 'today' : ''}`;
                 
-                // DIESE ZEILE ERMÖGLICHT DEN KLICK:
+                // HIER WIRD DER KLICK AKTIVIERT
                 dayEl.onclick = () => openModal(dateKey);
 
                 dayEl.innerHTML = `<span class="${ev.isHoliday ? 'holiday-text' : ''}">${day}</span>`;
