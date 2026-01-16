@@ -45,8 +45,13 @@
       const auth = getAuth(app);
       const provider = new GoogleAuthProvider();
 
-      // Login/Logout Funktionen für die Buttons
-      window.login = () => signInWithPopup(auth, provider).catch(err => alert("Fehler: " + err.message));
+      window.login = () => signInWithPopup(auth, provider).catch(err => {
+          if (err.code === 'auth/unauthorized-domain') {
+              alert("Fehler: Diese Domain ist in der Firebase Console noch nicht autorisiert.");
+          } else {
+              alert("Login Fehler: " + err.message);
+          }
+      });
       window.logout = () => signOut(auth);
 
       let userEventsDocRef = null;
@@ -58,8 +63,6 @@
               loginBtn.classList.add('hidden');
               userArea.classList.remove('hidden');
               document.getElementById('user-img').src = user.photoURL || '';
-              
-              // Verknüpfung mit deinen Regeln: Pfad /data/{userId}
               userEventsDocRef = doc(db, "data", user.uid);
               onSnapshot(userEventsDocRef, (docSnap) => {
                   userEvents = docSnap.exists() ? docSnap.data() : {};
@@ -74,7 +77,6 @@
           }
       });
 
-      // Speicher-Schnittstelle für den Kalender
       window.updateAllEventsFirebase = async (allEvents) => {
           if (userEventsDocRef) await setDoc(userEventsDocRef, allEvents);
       };
@@ -90,7 +92,6 @@
         .holiday-text { color: #dc2626 !important; font-weight: bold; position: relative; z-index: 20; }
         .day.today { box-shadow: 0 0 0 2px #3b82f6; position: relative; z-index: 30; }
         .day span { color: #1f2937; }
-        /* Punkt für Termine */
         .user-event-dot { width: 4px; height: 4px; background-color: #ef4444; border-radius: 50%; position: absolute; bottom: 4px; }
         #event-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
     </style>
@@ -100,10 +101,10 @@
     <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-2 sm:p-4 md:p-6 text-gray-800">
         
         <div class="flex justify-end mb-4 h-8">
-            <button id="login-btn" onclick="login()" class="bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-semibold shadow-sm">Google Login</button>
+            <button id="login-btn" onclick="login()" class="bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-semibold shadow-sm hover:bg-blue-700 transition-colors">Google Login</button>
             <div id="user-area" class="hidden flex items-center gap-3">
-                <img id="user-img" src="" class="w-7 h-7 rounded-full border">
-                <button onclick="logout()" class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs border">Abmelden</button>
+                <img id="user-img" src="" class="w-7 h-7 rounded-full border border-gray-200">
+                <button onclick="logout()" class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold border hover:bg-gray-200 transition-colors">Abmelden</button>
             </div>
         </div>
 
@@ -130,18 +131,30 @@
             <h2 class="text-base sm:text-lg font-semibold text-blue-800">Ereignis für die aktuelle Woche</h2>
             <p id="current-week-event" class="text-xl sm:text-2xl font-bold text-blue-900 mt-1"></p>
         </div>
+        
+        <div class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-gray-700">
+             <div class="flex items-center"><span class="w-4 h-4 rounded-full event-1 mr-2"></span>Schlössle</div>
+             <div class="flex items-center"><span class="w-4 h-4 rounded-full event-2 mr-2"></span>Kursana</div>
+             <div class="flex items-center"><span class="w-4 h-4 rounded-full event-3 mr-2"></span>Keskin</div>
+             <div class="flex items-center">
+                <span class="w-4 h-4 rounded-full bg-gray-100 mr-2 border border-gray-400 flex items-center justify-center">
+                    <span class="text-xs font-bold holiday-text">F</span>
+                </span>
+                Feiertag
+             </div>
+        </div>
     </div>
 
     <div id="event-modal">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-80 text-gray-800">
-            <h3 id="modal-date-title" class="font-bold mb-4 text-lg">Termine</h3>
+            <h3 id="modal-date-title" class="font-bold mb-4 text-lg text-gray-800">Termine</h3>
             <div id="existing-events-list" class="mb-4 space-y-2"></div>
             <div class="border-t pt-4">
-                <input type="time" id="event-time" class="w-full border rounded p-2 mb-2 text-black">
-                <input type="text" id="event-text" placeholder="Beschreibung" class="w-full border rounded p-2 mb-4 text-black">
+                <input type="time" id="event-time" class="w-full border rounded p-2 mb-2">
+                <input type="text" id="event-text" placeholder="Beschreibung" class="w-full border rounded p-2 mb-4">
                 <div class="flex justify-between">
                     <button onclick="closeModal()" class="text-gray-500">Schließen</button>
-                    <button id="add-save-btn" onclick="addOrUpdateEvent()" class="bg-blue-600 text-white px-4 py-2 rounded">Speichern</button>
+                    <button id="add-save-btn" onclick="addOrUpdateEvent()" class="bg-blue-600 text-white px-4 py-2 rounded shadow">Hinzufügen</button>
                 </div>
             </div>
         </div>
@@ -155,7 +168,7 @@
         const nextMonthBtn = document.getElementById('next-month');
         const currentWeekEventEl = document.getElementById('current-week-event');
 
-        let userEvents = {}; // Geändert von const auf let für Firebase
+        let userEvents = {}; 
         let currentDate = new Date();
         let selectedDateKey = null;
 
@@ -177,13 +190,45 @@
             return Math.ceil((((d - yearStart) / MS_PER_DAY) + 1) / 7);
         }
 
+        function addDays(baseDate, days) {
+            const newDate = new Date(baseDate.getTime());
+            newDate.setUTCDate(newDate.getUTCDate() + days);
+            return newDate;
+        }
+
         function getLocalDayKey(date) {
             return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         }
 
-        // --- DEINE ORIGINAL-LOGIK FÜR EVENTS & FEIERTAGE ---
-        // [Hier folgen deine Funktionen getEasterSunday, getHolidayName, getEventForDate wie im Original]
-        // (Aus Platzgründen hier abgekürzt, bitte deine Funktionen aus dem Original einfügen)
+        function getUTCDayKey(date) {
+            return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+        }
+
+        // --- DEINE OSTERFORMEL ---
+        function getEasterSunday(year) {
+            const Y = year, a = Y % 19, b = Math.floor(Y / 100), c = Y % 100,
+                  d = Math.floor(b / 4), e = b % 4, g = Math.floor((8 * b + 13) / 25),
+                  h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4,
+                  L_val = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * L_val) / 451),
+                  month = Math.floor((h + L_val - 7 * m + 114) / 31),
+                  day = ((h + L_val - 7 * m + 114) % 31) + 1;
+            return new Date(Date.UTC(year, month - 1, day));
+        }
+
+        // --- DEINE FEIERTAGSPRÜFUNG ---
+        function getHolidayName(date) {
+            const year = date.getFullYear(), month = date.getMonth() + 1, day = date.getDate(), dateKey = getLocalDayKey(date);
+            const fixedHolidays = { '1-1': 'Neujahr', '1-6': 'Heilige Drei Könige', '5-1': 'Tag der Arbeit', '8-8': 'Friedensfest', '8-15': 'Mariä Himmelfahrt', '10-3': 'Tag der Einheit', '11-1': 'Allerheiligen', '12-25': 'Weihnachten', '12-26': 'Weihnachten' };
+            if (fixedHolidays[`${month}-${day}`]) return fixedHolidays[`${month}-${day}`];
+            const easter = getEasterSunday(year);
+            const movable = {};
+            movable[getUTCDayKey(addDays(easter, -2))] = 'Karfreitag';
+            movable[getUTCDayKey(addDays(easter, 1))] = 'Ostermontag';
+            movable[getUTCDayKey(addDays(easter, 39))] = 'Christi Himmelfahrt';
+            movable[getUTCDayKey(addDays(easter, 50))] = 'Pfingstmontag';
+            movable[getUTCDayKey(addDays(easter, 60))] = 'Fronleichnam';
+            return movable[dateKey] || null;
+        }
 
         function getEventForDate(date) {
             let result = {};
@@ -198,14 +243,15 @@
                 else if (cycleDayIndex >= 14 && cycleDayIndex <= 20) result = Object.assign({}, events[2]);
                 else result = { name: 'Kein Ereignis (Pause)', class: 'event-none' };
             }
+            const hName = getHolidayName(new Date(date.getTime()));
+            if (hName) { result.isHoliday = true; result.holidayName = hName; result.name = `Feiertag (${hName})`; }
             return result;
         }
 
-        // --- TERMIN-MODAL LOGIK ---
         function openModal(dateKey) {
-            selectedDateKey = dateKey;
+            if (!auth.currentUser) { alert("Bitte anmelden."); return; }
+            selectedDateKey = dateKey; renderModalEvents();
             document.getElementById('modal-date-title').textContent = `Termine am ${dateKey}`;
-            renderModalEvents();
             document.getElementById('event-modal').style.display = 'flex';
         }
         function closeModal() { document.getElementById('event-modal').style.display = 'none'; }
@@ -214,49 +260,50 @@
             const list = document.getElementById('existing-events-list');
             list.innerHTML = '';
             (userEvents[selectedDateKey] || []).forEach((ev, i) => {
-                list.innerHTML += `<div class="text-sm p-1 border-b">${ev.time} - ${ev.text}</div>`;
+                list.innerHTML += `<div class="flex justify-between items-center text-sm p-2 bg-gray-50 rounded border">
+                    <span><strong>${ev.time}</strong> ${ev.text}</span>
+                    <button onclick="deleteEvent(${i})" class="text-red-500 font-bold">X</button>
+                </div>`;
             });
         }
 
         async function addOrUpdateEvent() {
-            const time = document.getElementById('event-time').value;
-            const text = document.getElementById('event-text').value;
+            const t = document.getElementById('event-time').value, d = document.getElementById('event-text').value;
+            if(!d) return;
             if(!userEvents[selectedDateKey]) userEvents[selectedDateKey] = [];
-            userEvents[selectedDateKey].push({time, text});
+            userEvents[selectedDateKey].push({time: t, text: d});
             await window.updateAllEventsFirebase(userEvents);
-            renderModalEvents();
-            renderCalendar();
+            renderModalEvents(); renderCalendar();
+        }
+
+        async function deleteEvent(index) {
+            userEvents[selectedDateKey].splice(index, 1);
+            if(userEvents[selectedDateKey].length === 0) delete userEvents[selectedDateKey];
+            await window.updateAllEventsFirebase(userEvents);
+            renderModalEvents(); renderCalendar();
         }
 
         function renderCalendar() {
             calendarGridWrapper.innerHTML = '';
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
+            const year = currentDate.getFullYear(), month = currentDate.getMonth();
             monthYearEl.textContent = `${currentDate.toLocaleString('de-DE', { month: 'long' })} ${year}`;
-            
-            const firstDay = new Date(year, month, 1);
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const firstDay = new Date(year, month, 1), daysInMonth = new Date(year, month + 1, 0).getDate();
             let startOffset = (firstDay.getDay() || 7) - 1;
-            
             calendarGridWrapper.insertAdjacentHTML('beforeend', `<div class="aspect-square flex items-center justify-center font-bold text-gray-500">${getWeekNumber(firstDay)}</div>`);
             for (let i = 0; i < startOffset; i++) calendarGridWrapper.insertAdjacentHTML('beforeend', '<div></div>');
-
             for (let day = 1; day <= daysInMonth; day++) {
-                const date = new Date(year, month, day);
-                const dateKey = getLocalDayKey(date);
-                if (date.getDay() === 1 && day !== 1) {
-                    calendarGridWrapper.insertAdjacentHTML('beforeend', `<div class="aspect-square flex items-center justify-center font-bold text-gray-500">${getWeekNumber(date)}</div>`);
-                }
-                const event = getEventForDate(date);
+                const date = new Date(year, month, day), dateKey = getLocalDayKey(date);
+                if (date.getDay() === 1 && day !== 1) calendarGridWrapper.insertAdjacentHTML('beforeend', `<div class="aspect-square flex items-center justify-center font-bold text-gray-500">${getWeekNumber(date)}</div>`);
+                const ev = getEventForDate(date);
                 const dayEl = document.createElement('div');
-                dayEl.className = `day relative p-1 rounded-lg text-center aspect-square flex items-center justify-center cursor-pointer ${event.class}`;
+                dayEl.className = `day relative p-1 rounded-lg text-center aspect-square flex items-center justify-center cursor-pointer ${ev.class} ${dateKey === getLocalDayKey(new Date()) ? 'today' : ''}`;
                 dayEl.onclick = () => openModal(dateKey);
-                dayEl.innerHTML = `<span class="text-xs sm:text-base">${day}</span>`;
+                dayEl.innerHTML = `<span class="${ev.isHoliday ? 'holiday-text' : ''}">${day}</span>`;
                 if(userEvents[dateKey]) dayEl.innerHTML += `<div class="user-event-dot"></div>`;
                 calendarGridWrapper.appendChild(dayEl);
             }
-            const currentEvent = getEventForDate(new Date());
-            currentWeekEventEl.textContent = currentEvent.name.replace(' (Pause)', '').replace(' (Wochenende)', '');
+            const curr = getEventForDate(new Date());
+            currentWeekEventEl.textContent = curr.isHoliday ? curr.holidayName : curr.name.replace(' (Pause)', '').replace(' (Wochenende)', '');
         }
 
         prevMonthBtn.onclick = () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); };
