@@ -28,48 +28,37 @@
     
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-      import { getFirestore, doc, setDoc, getDoc, onSnapshot, deleteField, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-      // DEINE FIREBASE KONFIGURATION HIER EINFÜGEN
       const firebaseConfig = {
-        apiKey: "DEIN_API_KEY",
-        authDomain: "DEIN_PROJEKT.firebaseapp.com",
-        projectId: "DEIN_PROJEKT",
-        storageBucket: "DEIN_PROJEKT.appspot.com",
-        messagingSenderId: "DEINE_ID",
-        appId: "DEINE_APP_ID"
+        apiKey: "AIzaSyBzkIboYMzW6ZoO3gfcyPiYFLT_-XQWFDc",
+        authDomain: "kalender-91d50.firebaseapp.com",
+        projectId: "kalender-91d50",
+        storageBucket: "kalender-91d50.firebasestorage.app",
+        messagingSenderId: "291518358460",
+        appId: "1:291518358460:web:7c7fc6fa15e692ffe9c1b9",
+        measurementId: "G-CFV1LSRZCZ"
       };
 
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const eventsDocRef = doc(db, "data", "calendarEvents");
 
-      // Globale Funktionen für das UI zugänglich machen
-      window.saveUserEventFirebase = async (dateKey, data) => {
-          await updateDoc(eventsDocRef, {
-              [dateKey]: data
-          }).catch(async (error) => {
-              // Falls das Dokument noch nicht existiert
-              if (error.code === 'not-found') {
-                  await setDoc(eventsDocRef, { [dateKey]: data });
-              }
-          });
+      window.updateAllEventsFirebase = async (allEvents) => {
+          try {
+              await setDoc(eventsDocRef, allEvents);
+          } catch (error) {
+              console.error("Fehler beim Speichern:", error);
+          }
       };
 
-      window.deleteUserEventFirebase = async (dateKey) => {
-          await updateDoc(eventsDocRef, {
-              [dateKey]: deleteField()
-          });
-      };
-
-      // Echtzeit-Update Listener
       onSnapshot(eventsDocRef, (doc) => {
           if (doc.exists()) {
               userEvents = doc.data();
           } else {
               userEvents = {};
           }
-          renderCalendar();
+          if (typeof renderCalendar === "function") renderCalendar();
       });
     </script>
 
@@ -80,42 +69,11 @@
         .event-2 { background-color: #bbf7d0; }
         .event-3 { background-color: #fef08a; }
         .event-none { background-color: #f3f4f6; }
-        
-        .holiday-text {
-            color: #dc2626 !important;
-            font-weight: bold;
-            position: relative;
-            z-index: 20; 
-        }
-        
-        .day.today {
-            box-shadow: 0 0 0 2px #3b82f6;
-            position: relative;
-            z-index: 30; 
-        }
-        
+        .holiday-text { color: #dc2626 !important; font-weight: bold; position: relative; z-index: 20; }
+        .day.today { box-shadow: 0 0 0 2px #3b82f6; position: relative; z-index: 30; }
         .day span { color: #1f2937; }
+        .user-event-dot { width: 4px; height: 4px; background-color: #ef4444; border-radius: 50%; position: absolute; bottom: 4px; }
         
-        .week-number {
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: #4b5563;
-            position: absolute;
-            top: 2px;
-            left: 3px;
-        }
-
-        /* Neu: Termin-Punkt */
-        .user-event-dot {
-            width: 4px;
-            height: 4px;
-            background-color: #ef4444;
-            border-radius: 50%;
-            position: absolute;
-            bottom: 4px;
-        }
-
-        /* Neu: Modal Styling */
         #event-modal {
             display: none;
             position: fixed;
@@ -129,62 +87,43 @@
 </head>
 <body class="bg-[#98507F] text-white flex items-start justify-center min-h-screen w-full p-4 pt-4">
 
-    <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-2 sm:p-4 md:p-6">
+    <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-2 sm:p-4 md:p-6 text-gray-800">
         <div class="header flex justify-between items-center mb-6">
             <button id="prev-month" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
             </button>
-            <h1 id="month-year" class="text-xl sm:text-2xl font-bold text-gray-800 text-center"></h1>
+            <h1 id="month-year" class="text-xl sm:text-2xl font-bold text-center"></h1>
             <button id="next-month" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
             </button>
         </div>
 
         <div class="grid grid-cols-8 gap-1 text-center font-semibold text-gray-500 mb-2 text-xs sm:text-base">
-            <div>KW</div>
-            <div>Mo</div>
-            <div>Di</div>
-            <div>Mi</div>
-            <div>Do</div>
-            <div>Fr</div>
-            <div>Sa</div>
-            <div>So</div>
+            <div>KW</div><div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div>
         </div>
-
         <div id="calendar-grid-wrapper" class="grid grid-cols-8 gap-1"></div>
 
         <div class="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200 text-center">
-            <h2 class="text-base sm:text-lg font-semibold text-blue-800">Ereignis für die aktuelle Woche</h2>
+            <h2 class="text-base sm:text-lg font-semibold text-blue-800">Ereignis für heute</h2>
             <p id="current-week-event" class="text-xl sm:text-2xl font-bold text-blue-900 mt-1"></p>
-        </div>
-
-        <div class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-gray-700">
-             <div class="flex items-center"><span class="w-4 h-4 rounded-full event-1 mr-2"></span>Schlössle</div>
-             <div class="flex items-center"><span class="w-4 h-4 rounded-full event-2 mr-2"></span>Kursana</div>
-             <div class="flex items-center"><span class="w-4 h-4 rounded-full event-3 mr-2"></span>Keskin</div>
-             <div class="flex items-center">
-                <span class="w-4 h-4 rounded-full bg-gray-100 mr-2 border border-gray-400 flex items-center justify-center">
-                    <span class="text-xs font-bold holiday-text">F</span>
-                </span>
-                Feiertag
-             </div>
         </div>
     </div>
 
     <div id="event-modal">
-        <div class="bg-white p-6 rounded-xl shadow-2xl w-80 text-gray-800">
-            <h3 id="modal-date-title" class="font-bold mb-4">Termin hinzufügen</h3>
-            <input type="time" id="event-time" class="w-full border rounded p-2 mb-2">
-            <input type="text" id="event-text" placeholder="Terminbeschreibung" class="w-full border rounded p-2 mb-4">
-            <div class="flex justify-between">
-                <button onclick="closeModal()" class="text-gray-500">Abbrechen</button>
-                <button onclick="saveUserEvent()" class="bg-blue-600 text-white px-4 py-2 rounded">Speichern</button>
+        <div class="bg-white p-6 rounded-xl shadow-2xl w-80 text-gray-800 max-h-[90vh] overflow-y-auto">
+            <h3 id="modal-date-title" class="font-bold mb-4">Termine</h3>
+            
+            <div id="existing-events-list" class="mb-4 space-y-2"></div>
+
+            <div class="border-t pt-4">
+                <p class="text-xs font-bold text-gray-500 mb-2 uppercase">Neuer Termin</p>
+                <input type="time" id="event-time" class="w-full border rounded p-2 mb-2">
+                <input type="text" id="event-text" placeholder="Beschreibung" class="w-full border rounded p-2 mb-4">
+                <div class="flex justify-between">
+                    <button onclick="closeModal()" class="text-gray-500">Schließen</button>
+                    <button onclick="addSingleEvent()" class="bg-blue-600 text-white px-4 py-2 rounded">Hinzufügen</button>
+                </div>
             </div>
-            <button id="delete-event-btn" onclick="deleteUserEvent()" class="w-full mt-4 text-red-500 text-sm hidden">Termin löschen</button>
         </div>
     </div>
 
@@ -194,24 +133,16 @@
         const prevMonthBtn = document.getElementById('prev-month');
         const nextMonthBtn = document.getElementById('next-month');
         const currentWeekEventEl = document.getElementById('current-week-event');
-        
-        // Neu: Termin-Variablen
         const eventModal = document.getElementById('event-modal');
         const eventTimeInput = document.getElementById('event-time');
         const eventTextInput = document.getElementById('event-text');
-        const deleteBtn = document.getElementById('delete-event-btn');
+        const existingEventsList = document.getElementById('existing-events-list');
+        
         let selectedDateKey = null;
-        // Initial leer, wird von Firebase befüllt
         let userEvents = {}; 
-
         let currentDate = new Date();
 
-        const events = [
-            { name: 'Schlössle', class: 'event-1' },
-            { name: 'Kursana', class: 'event-2' },
-            { name: 'Keskin', class: 'event-3' }
-        ];
-
+        const events = [{ name: 'Schlössle', class: 'event-1' }, { name: 'Kursana', class: 'event-2' }, { name: 'Keskin', class: 'event-3' }];
         const REFERENCE_MONDAY = new Date(2025, 0, 13); 
         const MS_PER_DAY = 1000 * 60 * 60 * 24;
         const CYCLE_DAYS = 42; 
@@ -229,186 +160,115 @@
             return Math.ceil((((d - yearStart) / MS_PER_DAY) + 1) / 7);
         }
 
-        function addDays(baseDate, days) {
-            const newDate = new Date(baseDate.getTime());
-            newDate.setUTCDate(newDate.getUTCDate() + days);
-            return newDate;
-        }
-
         function getLocalDayKey(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
-        function getUTCDayKey(date) {
-            const year = date.getUTCFullYear();
-            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(date.getUTCDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
-        function getEasterSunday(year) {
-            const Y = year;
-            const a = Y % 19, b = Math.floor(Y / 100), c = Y % 100;
-            const d = Math.floor(b / 4), e = b % 4, g = Math.floor((8 * b + 13) / 25);
-            const h = (19 * a + b - d - g + 15) % 30;
-            const i = Math.floor(c / 4), k = c % 4;
-            const L_val = (32 + 2 * e + 2 * i - h - k) % 7;
-            const m = Math.floor((a + 11 * h + 22 * L_val) / 451);
-            const month = Math.floor((h + L_val - 7 * m + 114) / 31); 
-            const day = ((h + L_val - 7 * m + 114) % 31) + 1; 
-            return new Date(Date.UTC(year, month - 1, day)); 
-        }
-
-        function getHolidayName(date) {
-            const year = date.getFullYear();
-            const month = date.getMonth() + 1;
-            const day = date.getDate();
-            const dateKey = getLocalDayKey(date);
-            const fixedHolidays = {
-                '1-1': 'Neujahr', '1-6': 'Heilige Drei Könige', '5-1': 'Tag der Arbeit',
-                '8-8': 'Friedensfest (Augsburg)', '8-15': 'Mariä Himmelfahrt',
-                '10-3': 'Tag der Deutschen Einheit', '11-1': 'Allerheiligen',
-                '12-25': 'Erster Weihnachtstag', '12-26': 'Zweiter Weihnachtstag'
-            };
-            const fixedKey = `${month}-${day}`;
-            if (fixedHolidays[fixedKey]) return fixedHolidays[fixedKey];
-            const easter = getEasterSunday(year); 
-            const movableHolidays = {};
-            movableHolidays[getUTCDayKey(addDays(easter, -2))] = 'Karfreitag';
-            movableHolidays[getUTCDayKey(easter)] = 'Ostersonntag';
-            movableHolidays[getUTCDayKey(addDays(easter, 1))] = 'Ostermontag';
-            movableHolidays[getUTCDayKey(addDays(easter, 39))] = 'Christi Himmelfahrt';
-            movableHolidays[getUTCDayKey(addDays(easter, 49))] = 'Pfingstsonntag';
-            movableHolidays[getUTCDayKey(addDays(easter, 50))] = 'Pfingstmontag';
-            movableHolidays[getUTCDayKey(addDays(easter, 60))] = 'Fronleichnam';
-            return movableHolidays[dateKey] || null;
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         }
 
         function getEventForDate(date) {
             let result = {};
             const dayOfWeek = date.getDay(); 
             if (dayOfWeek === 0 || dayOfWeek === 6) {
-                result = { name: 'Kein Ereignis (Wochenende)', class: 'event-none' };
+                result = { name: 'Wochenende', class: 'event-none' };
             } else {
                 const daysSinceRef = daysSinceUTC(REFERENCE_MONDAY, date);
                 let cycleDayIndex = ((daysSinceRef % CYCLE_DAYS) + CYCLE_DAYS) % CYCLE_DAYS; 
                 if (cycleDayIndex >= 0 && cycleDayIndex < 7) result = events[0];
                 else if (cycleDayIndex >= 7 && cycleDayIndex < 14) result = events[1];
                 else if (cycleDayIndex >= 14 && cycleDayIndex <= 20) result = events[2];
-                else result = { name: 'Kein Ereignis (Pause)', class: 'event-none' };
-            }
-            const holidayName = getHolidayName(new Date(date.getTime())); 
-            if (holidayName) {
-                result.isHoliday = true; 
-                result.holidayName = holidayName;
-                result.name = `Feiertag (${holidayName}) / ${result.name.split(' (')[0]}`; 
-            } else {
-                result.isHoliday = false;
+                else result = { name: 'Pause', class: 'event-none' };
             }
             return result;
         }
 
         function openModal(dateKey) {
             selectedDateKey = dateKey;
-            const existing = userEvents[dateKey];
-            document.getElementById('modal-date-title').textContent = `Termin am ${dateKey.split('-').reverse().join('.')}`;
-            if (existing) {
-                eventTimeInput.value = existing.time;
-                eventTextInput.value = existing.text;
-                deleteBtn.classList.remove('hidden');
-            } else {
-                eventTimeInput.value = "";
-                eventTextInput.value = "";
-                deleteBtn.classList.add('hidden');
-            }
+            document.getElementById('modal-date-title').textContent = `Termine am ${dateKey.split('-').reverse().join('.')}`;
+            renderModalEvents();
             eventModal.style.display = 'flex';
         }
 
-        function closeModal() {
-            eventModal.style.display = 'none';
+        function renderModalEvents() {
+            existingEventsList.innerHTML = '';
+            const dayEvents = userEvents[selectedDateKey] || [];
+            if (Array.isArray(dayEvents)) {
+                dayEvents.forEach((ev, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'flex justify-between items-center bg-gray-50 p-2 rounded border';
+                    div.innerHTML = `
+                        <div class="text-sm"><strong>${ev.time || '--:--'}</strong> ${ev.text}</div>
+                        <button onclick="deleteSingleEvent(${index})" class="text-red-500 text-xs font-bold ml-2">Löschen</button>
+                    `;
+                    existingEventsList.appendChild(div);
+                });
+            }
         }
 
-        // Geändert auf Firebase-Speicherung
-        async function saveUserEvent() {
+        async function addSingleEvent() {
             if (eventTextInput.value.trim() !== "") {
-                const data = {
+                if (!userEvents[selectedDateKey]) userEvents[selectedDateKey] = [];
+                // Falls es vorher kein Array war (von alter Version), fixen:
+                if (!Array.isArray(userEvents[selectedDateKey])) userEvents[selectedDateKey] = [];
+                
+                userEvents[selectedDateKey].push({
                     time: eventTimeInput.value,
                     text: eventTextInput.value
-                };
-                if (window.saveUserEventFirebase) {
-                    await window.saveUserEventFirebase(selectedDateKey, data);
-                }
+                });
+                
+                await window.updateAllEventsFirebase(userEvents);
+                eventTextInput.value = "";
+                eventTimeInput.value = "";
+                renderModalEvents();
             }
-            closeModal();
         }
 
-        // Geändert auf Firebase-Löschung
-        async function deleteUserEvent() {
-            if (window.deleteUserEventFirebase) {
-                await window.deleteUserEventFirebase(selectedDateKey);
-            }
-            closeModal();
+        async function deleteSingleEvent(index) {
+            userEvents[selectedDateKey].splice(index, 1);
+            if (userEvents[selectedDateKey].length === 0) delete userEvents[selectedDateKey];
+            await window.updateAllEventsFirebase(userEvents);
+            renderModalEvents();
         }
-        
+
+        function closeModal() { eventModal.style.display = 'none'; }
+
         function renderCalendar() {
             calendarGridWrapper.innerHTML = '';
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
             monthYearEl.textContent = `${currentDate.toLocaleString('de-DE', { month: 'long' })} ${year}`;
-            const firstDayOfMonth = new Date(year, month, 1);
+            
+            const firstDay = new Date(year, month, 1);
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-            let dayOfWeek = firstDayOfMonth.getDay();
-            if (dayOfWeek === 0) dayOfWeek = 7;
-            const startOffset = dayOfWeek - 1;
-            const todayDateKey = getLocalDayKey(new Date());
-            const firstWeekNumber = getWeekNumber(firstDayOfMonth);
-            
-            calendarGridWrapper.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-center font-bold text-gray-700 aspect-square text-xs sm:text-sm md:text-base">${firstWeekNumber}</div>`);
-            for (let i = 0; i < startOffset; i++) {
-                calendarGridWrapper.insertAdjacentHTML('beforeend', '<div class="aspect-square"></div>');
-            }
-            
-            let weekNumbersDisplayed = { [firstWeekNumber]: true };
+            let startOffset = (firstDay.getDay() || 7) - 1;
+            const todayKey = getLocalDayKey(new Date());
+
+            calendarGridWrapper.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-center font-bold text-gray-400 aspect-square text-xs">${getWeekNumber(firstDay)}</div>`);
+            for (let i = 0; i < startOffset; i++) calendarGridWrapper.insertAdjacentHTML('beforeend', '<div class="aspect-square"></div>');
+
             for (let day = 1; day <= daysInMonth; day++) {
                 const date = new Date(year, month, day);
                 const dateKey = getLocalDayKey(date);
-                const weekNumber = getWeekNumber(date); 
-                let event = getEventForDate(date); 
-
-                if (!weekNumbersDisplayed[weekNumber] && date.getDay() === 1) {
-                    calendarGridWrapper.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-center font-bold text-gray-700 aspect-square text-xs sm:text-sm md:text-base">${weekNumber}</div>`);
-                    weekNumbersDisplayed[weekNumber] = true;
+                if (date.getDay() === 1 && day !== 1) {
+                    calendarGridWrapper.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-center font-bold text-gray-400 aspect-square text-xs">${getWeekNumber(date)}</div>`);
                 }
                 
+                let eventInfo = getEventForDate(date);
                 const dayEl = document.createElement('div');
-                dayEl.className = `day relative p-1 rounded-lg text-center aspect-square flex items-center justify-center cursor-pointer ${event.class} ${dateKey === todayDateKey ? 'today' : ''}`;
-                
+                dayEl.className = `day relative p-1 rounded-lg text-center aspect-square flex items-center justify-center cursor-pointer ${eventInfo.class} ${dateKey === todayKey ? 'today' : ''}`;
                 dayEl.onclick = () => openModal(dateKey);
+                dayEl.innerHTML = `<span class="font-medium text-xs sm:text-sm">${day}</span>`;
                 
-                const textClass = event.isHoliday ? 'holiday-text' : '';
-                dayEl.innerHTML = `<span class="text-gray-800 font-medium text-xs sm:text-sm md:text-base ${textClass}">${day}</span>`;
-                
-                let title = event.name;
-                if (userEvents && userEvents[dateKey]) {
-                    title += `\nTermin: ${userEvents[dateKey].time} ${userEvents[dateKey].text}`;
+                if (userEvents[dateKey] && Array.isArray(userEvents[dateKey]) && userEvents[dateKey].length > 0) {
                     const dot = document.createElement('div');
                     dot.className = 'user-event-dot';
                     dayEl.appendChild(dot);
                 }
-                dayEl.title = title;
                 calendarGridWrapper.appendChild(dayEl);
             }
-            
-            const currentEvent = getEventForDate(new Date());
-            let bannerName = currentEvent.isHoliday ? currentEvent.holidayName : currentEvent.name.replace(' (Pause)', '').replace(' (Wochenende)', '');
-            currentWeekEventEl.textContent = bannerName;
+            currentWeekEventEl.textContent = getEventForDate(new Date()).name;
         }
 
-        prevMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
-        nextMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+        prevMonthBtn.onclick = () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); };
+        nextMonthBtn.onclick = () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); };
         renderCalendar();
     </script>
 </body>
