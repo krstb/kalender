@@ -45,13 +45,7 @@
       const auth = getAuth(app);
       const provider = new GoogleAuthProvider();
 
-      window.login = () => signInWithPopup(auth, provider).catch(err => {
-          if (err.code === 'auth/unauthorized-domain') {
-              alert("Fehler: Diese Domain ist in der Firebase Console noch nicht autorisiert.");
-          } else {
-              alert("Login Fehler: " + err.message);
-          }
-      });
+      window.login = () => signInWithPopup(auth, provider).catch(err => alert("Login Fehler: " + err.message));
       window.logout = () => signOut(auth);
 
       let userEventsDocRef = null;
@@ -101,10 +95,10 @@
     <div class="w-full max-w-4xl bg-white rounded-2xl shadow-lg p-2 sm:p-4 md:p-6 text-gray-800">
         
         <div class="flex justify-end mb-4 h-8">
-            <button id="login-btn" onclick="login()" class="bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-semibold shadow-sm hover:bg-blue-700 transition-colors">Google Login</button>
+            <button id="login-btn" onclick="login()" class="bg-blue-600 text-white px-4 py-1 rounded-full text-xs font-semibold shadow-sm">Google Login</button>
             <div id="user-area" class="hidden flex items-center gap-3">
-                <img id="user-img" src="" class="w-7 h-7 rounded-full border border-gray-200">
-                <button onclick="logout()" class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs font-semibold border hover:bg-gray-200 transition-colors">Abmelden</button>
+                <img id="user-img" src="" class="w-7 h-7 rounded-full border">
+                <button onclick="logout()" class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs border">Abmelden</button>
             </div>
         </div>
 
@@ -131,37 +125,24 @@
             <h2 class="text-base sm:text-lg font-semibold text-blue-800">Ereignis für die aktuelle Woche</h2>
             <p id="current-week-event" class="text-xl sm:text-2xl font-bold text-blue-900 mt-1"></p>
         </div>
-        
-        <div class="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-gray-700">
-             <div class="flex items-center"><span class="w-4 h-4 rounded-full event-1 mr-2"></span>Schlössle</div>
-             <div class="flex items-center"><span class="w-4 h-4 rounded-full event-2 mr-2"></span>Kursana</div>
-             <div class="flex items-center"><span class="w-4 h-4 rounded-full event-3 mr-2"></span>Keskin</div>
-             <div class="flex items-center">
-                <span class="w-4 h-4 rounded-full bg-gray-100 mr-2 border border-gray-400 flex items-center justify-center">
-                    <span class="text-xs font-bold holiday-text">F</span>
-                </span>
-                Feiertag
-             </div>
-        </div>
     </div>
 
     <div id="event-modal">
         <div class="bg-white p-6 rounded-xl shadow-2xl w-80 text-gray-800">
-            <h3 id="modal-date-title" class="font-bold mb-4 text-lg text-gray-800">Termine</h3>
+            <h3 id="modal-date-title" class="font-bold mb-4 text-lg">Termine</h3>
             <div id="existing-events-list" class="mb-4 space-y-2"></div>
             <div class="border-t pt-4">
                 <input type="time" id="event-time" class="w-full border rounded p-2 mb-2">
                 <input type="text" id="event-text" placeholder="Beschreibung" class="w-full border rounded p-2 mb-4">
                 <div class="flex justify-between">
-                    <button onclick="closeModal()" class="text-gray-500">Schließen</button>
-                    <button id="add-save-btn" onclick="addOrUpdateEvent()" class="bg-blue-600 text-white px-4 py-2 rounded shadow">Hinzufügen</button>
+                    <button onclick="closeModal()" class="text-gray-500">Abbrechen</button>
+                    <button onclick="addOrUpdateEvent()" class="bg-blue-600 text-white px-4 py-2 rounded">Speichern</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- DEIN ORIGINALER JAVASCRIPT CODE ---
         const monthYearEl = document.getElementById('month-year');
         const calendarGridWrapper = document.getElementById('calendar-grid-wrapper');
         const prevMonthBtn = document.getElementById('prev-month');
@@ -204,7 +185,6 @@
             return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
         }
 
-        // --- DEINE OSTERFORMEL ---
         function getEasterSunday(year) {
             const Y = year, a = Y % 19, b = Math.floor(Y / 100), c = Y % 100,
                   d = Math.floor(b / 4), e = b % 4, g = Math.floor((8 * b + 13) / 25),
@@ -215,7 +195,6 @@
             return new Date(Date.UTC(year, month - 1, day));
         }
 
-        // --- DEINE FEIERTAGSPRÜFUNG ---
         function getHolidayName(date) {
             const year = date.getFullYear(), month = date.getMonth() + 1, day = date.getDate(), dateKey = getLocalDayKey(date);
             const fixedHolidays = { '1-1': 'Neujahr', '1-6': 'Heilige Drei Könige', '5-1': 'Tag der Arbeit', '8-8': 'Friedensfest', '8-15': 'Mariä Himmelfahrt', '10-3': 'Tag der Einheit', '11-1': 'Allerheiligen', '12-25': 'Weihnachten', '12-26': 'Weihnachten' };
@@ -248,10 +227,12 @@
             return result;
         }
 
+        // MODAL FUNKTIONEN
         function openModal(dateKey) {
-            if (!auth.currentUser) { alert("Bitte anmelden."); return; }
-            selectedDateKey = dateKey; renderModalEvents();
-            document.getElementById('modal-date-title').textContent = `Termine am ${dateKey}`;
+            if (!auth.currentUser) { alert("Bitte erst anmelden."); return; }
+            selectedDateKey = dateKey;
+            document.getElementById('modal-date-title').textContent = `Termine am ${dateKey.split('-').reverse().join('.')}`;
+            renderModalEvents();
             document.getElementById('event-modal').style.display = 'flex';
         }
         function closeModal() { document.getElementById('event-modal').style.display = 'none'; }
@@ -260,7 +241,7 @@
             const list = document.getElementById('existing-events-list');
             list.innerHTML = '';
             (userEvents[selectedDateKey] || []).forEach((ev, i) => {
-                list.innerHTML += `<div class="flex justify-between items-center text-sm p-2 bg-gray-50 rounded border">
+                list.innerHTML += `<div class="flex justify-between p-2 bg-gray-50 border rounded text-sm mb-1">
                     <span><strong>${ev.time}</strong> ${ev.text}</span>
                     <button onclick="deleteEvent(${i})" class="text-red-500 font-bold">X</button>
                 </div>`;
@@ -268,19 +249,23 @@
         }
 
         async function addOrUpdateEvent() {
-            const t = document.getElementById('event-time').value, d = document.getElementById('event-text').value;
-            if(!d) return;
-            if(!userEvents[selectedDateKey]) userEvents[selectedDateKey] = [];
-            userEvents[selectedDateKey].push({time: t, text: d});
+            const time = document.getElementById('event-time').value;
+            const text = document.getElementById('event-text').value;
+            if (!text) return;
+            if (!userEvents[selectedDateKey]) userEvents[selectedDateKey] = [];
+            userEvents[selectedDateKey].push({time, text});
             await window.updateAllEventsFirebase(userEvents);
-            renderModalEvents(); renderCalendar();
+            document.getElementById('event-text').value = "";
+            renderModalEvents();
+            renderCalendar();
         }
 
         async function deleteEvent(index) {
             userEvents[selectedDateKey].splice(index, 1);
             if(userEvents[selectedDateKey].length === 0) delete userEvents[selectedDateKey];
             await window.updateAllEventsFirebase(userEvents);
-            renderModalEvents(); renderCalendar();
+            renderModalEvents();
+            renderCalendar();
         }
 
         function renderCalendar() {
@@ -297,7 +282,10 @@
                 const ev = getEventForDate(date);
                 const dayEl = document.createElement('div');
                 dayEl.className = `day relative p-1 rounded-lg text-center aspect-square flex items-center justify-center cursor-pointer ${ev.class} ${dateKey === getLocalDayKey(new Date()) ? 'today' : ''}`;
+                
+                // DIESE ZEILE ERMÖGLICHT DEN KLICK:
                 dayEl.onclick = () => openModal(dateKey);
+
                 dayEl.innerHTML = `<span class="${ev.isHoliday ? 'holiday-text' : ''}">${day}</span>`;
                 if(userEvents[dateKey]) dayEl.innerHTML += `<div class="user-event-dot"></div>`;
                 calendarGridWrapper.appendChild(dayEl);
