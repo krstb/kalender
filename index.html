@@ -269,23 +269,27 @@
         }
 
         function renderModalEvents() {
-            const list = document.getElementById('existing-events-list');
-            list.innerHTML = '';
-            (userEvents[selectedDateKey] || []).forEach((ev, i) => {
-                const item = document.createElement('div');
-                item.className = "flex justify-between items-center p-2 bg-gray-50 border-b text-sm";
-                item.innerHTML = `
-                    <div class="flex-grow">
-                        <strong>${ev.time || '--:--'}</strong> ${ev.text}
-                    </div>
-                    <div class="flex gap-3">
-                        <button onclick="editEvent(${i})" class="text-blue-500 font-medium">Bearbeiten</button>
-                        <button onclick="deleteEvent(${i})" class="text-red-500 font-medium">Löschen</button>
-                    </div>
-                `;
-                list.appendChild(item);
-            });
-        }
+        function renderModalEvents() {
+    const list = document.getElementById('existing-events-list');
+    list.innerHTML = '';
+    (userEvents[selectedDateKey] || []).forEach((ev, i) => {
+        const item = document.createElement('div');
+        // Layout auf vertikal (Spalte) umgestellt
+        item.className = "flex flex-col p-3 bg-gray-50 border-b text-sm mb-2 rounded-lg";
+        item.innerHTML = `
+            <div class="mb-1">
+                <span class="font-bold text-lg">${ev.time || '--:--'}</span> 
+                <span class="ml-1">${ev.text}</span>
+            </div>
+            <div class="flex gap-4 mt-1">
+                <button onclick="editEvent(${i})" class="text-blue-600 font-semibold hover:underline">Bearbeiten</button>
+                <button onclick="deleteEvent(${i})" class="text-red-600 font-semibold hover:underline">Löschen</button>
+            </div>
+        `;
+        list.appendChild(item);
+    });
+}
+
 
         window.editEvent = (i) => {
             const ev = userEvents[selectedDateKey][i];
